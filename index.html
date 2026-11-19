@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Zero-Trust AES-256 Vault</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --bg-glow: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.16), transparent 60%);
+      --card: rgba(17, 24, 39, 0.88);
+      --input-bg: #0b1120;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: rgba(148, 163, 184, 0.16);
+      --border-focus: #3b82f6;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px 14px 48px;
+      background-color: var(--bg);
+      background-image: var(--bg-glow);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 3px 0 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .pill {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      white-space: nowrap;
+    }
+
+    .field-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0 6px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      letter-spacing: 0.01em;
+    }
+
+    .meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .pw-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    textarea {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 12px 14px;
+      font-size: 0.96rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    textarea {
+      min-height: 155px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .strength-wrap {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .strength-bar {
+      flex: 1;
+      height: 5px;
+      background: rgba(148, 163, 184, 0.15);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      transition: width 0.25s ease, background-color 0.25s ease;
+    }
+
+    .strength-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 96px;
+      text-align: right;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      flex: 1;
+      min-width: 105px;
+      padding: 11px 14px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      background: var(--accent);
+      transition: transform 0.08s ease, background-color 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+
+    button.decrypt-btn {
+      background: #0d9488;
+    }
+
+    button.decrypt-btn:hover:not(:disabled) {
+      background: #0f766e;
+    }
+
+    button.secondary {
+      background: rgba(148, 163, 184, 0.12);
+      border-color: var(--border);
+      color: #e2e8f0;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: rgba(148, 163, 184, 0.2);
+    }
+
+    button.danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
+    button.danger:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .toggle-btn {
+      flex: 0 0 auto;
+      min-width: 74px;
+    }
+
+    .status {
+      margin-top: 14px;
+      padding: 11px 14px;
+      border-radius: 11px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .status.ok {
+      display: flex;
+      background: rgba(16, 185, 129, 0.12);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status.err {
+      display: flex;
+      background: rgba(239, 68, 68, 0.12);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status.info {
+      display: flex;
+      background: rgba(59, 130, 246, 0.12);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .timer-badge {
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.18);
+      color: #fcd34d;
+      white-space: nowrap;
+      display: none;
+    }
+
+    /* Collapsible Guide */
+    details.guide {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    details.guide summary {
+      padding: 16px 20px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #e2e8f0;
+      user-select: none;
+    }
+
+    details.guide summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.guide summary::after {
+      content: "+";
+      font-size: 1.2rem;
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+
+    details.guide[open] summary::after {
+      content: "−";
+    }
+
+    .guide-body {
+      padding: 0 20px 20px;
+      border-top: 1px solid var(--border);
+      color: #cbd5e1;
+      font-size: 0.86rem;
+      line-height: 1.6;
+    }
+
+    .guide-body h3 {
+      margin: 16px 0 6px;
+      font-size: 0.9rem;
+      color: #f8fafc;
+    }
+
+    .guide-body ol,
+    .guide-body ul {
+      margin: 6px 0 0;
+      padding-left: 20px;
+    }
+
+    .guide-body li {
+      margin-bottom: 6px;
+    }
+
+    .guide-body code {
+      background: rgba(148, 163, 184, 0.15);
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      color: #93c5fd;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 16px; }
+      .header { flex-direction: column; }
+      button { min-width: 90px; font-size: 0.86rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card">
+      <div class="header">
+        <div class="title-wrap">
+          <div class="icon-badge" aria-hidden="true">🔐</div>
+          <div>
+            <h1>Zero-Trust Credential Vault</h1>
+            <p class="subtitle">AES-256-GCM · PBKDF2 (600,000 rounds) · 100% Client-Side</p>
+          </div>
+        </div>
+        <span class="pill">Offline Safe</span>
+      </div>
+
+      <div class="field-header" style="margin-top: 0;">
+        <label for="password">Master Password</label>
+        <span id="timerBadge" class="timer-badge">Auto-clear: 02:00</span>
+      </div>
+      <div class="pw-group">
+        <input
+          id="password"
+          type="password"
+          placeholder="Enter a strong master passphrase (16+ chars recommended)"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          oninput="updatePasswordStrength()"
+        />
+        <button type="button" class="secondary toggle-btn" onclick="togglePw()">Show</button>
+      </div>
+      <div class="strength-wrap">
+        <div class="strength-bar"><div id="strengthFill" class="strength-fill"></div></div>
+        <span id="strengthLabel" class="strength-label">Enter password</span>
+      </div>
+
+      <div class="field-header">
+        <label for="inputText">Input (Plaintext or Encrypted String)</label>
+        <span id="inputMeta" class="meta">0 chars · 0 KB</span>
+      </div>
+      <textarea
+        id="inputText"
+        placeholder="Paste credentials to encrypt, paste a V1:... string to decrypt, or tap Load File..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        oninput="updateMeta('inputText', 'inputMeta')"
+      ></textarea>
+
+      <div class="btn-row">
+        <button type="button" class="secondary" onclick="document.getElementById('fileInput').click()">Load File</button>
+        <input id="fileInput" type="file" accept=".txt,.enc,.json,.csv,.md" onchange="loadFile(event)" />
+        <button id="encryptBtn" type="button" class="primary" onclick="handleEncrypt()">Encrypt</button>
+        <button id="decryptBtn" type="button" class="decrypt-btn" onclick="handleDecrypt()">Decrypt</button>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <div class="field-header">
+        <label for="outputText">Output</label>
+        <span id="outputMeta" class="meta">0 chars · 0 KB</span>
+      </div>
+      <textarea
+        id="outputText"
+        readonly
+        placeholder="Encrypted or decrypted output appears here..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      ></textarea>
+
+      <div class="btn-row">
+        <button type="button" class="secondary" onclick="copyOutput()">Copy</button>
+        <button type="button" class="secondary" onclick="downloadOutput()">Download .txt</button>
+        <button type="button" class="danger" onclick="clearAll()">Clear All</button>
+      </div>
+    </section>
+
+    <details class="guide">
+      <summary>How to Use This Vault & Security Guide</summary>
+      <div class="guide-body">
+        <h3>1. One-Time Free Setup (For Mobile Access)</h3>
+        <ol>
+          <li>Mobile browsers block Web Crypto on raw local files (<code>file://</code>). Host this single file for free on <strong>GitHub Pages</strong> or <strong>Cloudflare Pages</strong> (rename it to <code>index.html</code>).</li>
+          <li>Protect your GitHub/Cloudflare account with 2FA so nobody can tamper with the file.</li>
+          <li>Open your hosted HTTPS link on your phone and tap <strong>Add to Home Screen</strong> so it behaves like a native app.</li>
+          <li>Everything runs strictly inside your browser memory—your password and text are never sent over the internet.</li>
+        </ol>
+
+        <h3>2. Encrypting & Saving to Google Drive</h3>
+        <ol>
+          <li>Enter a strong master password (aim for <strong>16+ characters</strong> or 4–5 unrelated words with numbers/symbols).</li>
+          <li>Type or paste your credentials into <strong>Input</strong> (or load an existing <code>.txt</code> file).</li>
+          <li>Tap <strong>Encrypt</strong>. The output starts with <code>V1:</code> and looks like random text.</li>
+          <li>Tap <strong>Download .txt</strong> and upload that encrypted file to your Google Drive. Delete any unencrypted copies from your device.</li>
+        </ol>
+
+        <h3>3. Decrypting on the Go (Phone or Laptop)</h3>
+        <ol>
+          <li>Open your bookmarked vault page.</li>
+          <li>Tap <strong>Load File</strong> and pick your encrypted <code>.txt</code> file directly from Google Drive (or copy-paste the <code>V1:...</code> text).</li>
+          <li>Enter your master password and tap <strong>Decrypt</strong>.</li>
+          <li>Your credentials appear in <strong>Output</strong>. A <strong>2-minute auto-clear timer</strong> automatically wipes all fields if you forget to tap <strong>Clear All</strong>.</li>
+        </ol>
+
+        <h3>4. Critical Rules to Stay Safe</h3>
+        <ul>
+          <li><strong>No Password Recovery:</strong> If you forget your master password, the file is permanently unrecoverable. Keep a written copy of your master password locked somewhere physically safe.</li>
+          <li><strong>Clean Your Clipboard:</strong> After copying a password from Output, copy something harmless so the credential doesn't sit in your clipboard history.</li>
+          <li><strong>Keep Backups:</strong> Save a spare copy of your encrypted <code>.txt</code> file (e.g., on an external drive or secondary cloud folder) in case you accidentally overwrite it.</li>
+        </ul>
+      </div>
+    </details>
+  </main>
+
+  <script>
+    const PBKDF2_ITERATIONS = 600000;
+    const SALT_LENGTH = 16;
+    const IV_LENGTH = 12;
+    const PREFIX = "V1:";
+    const AUTO_CLEAR_SECONDS = 120;
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    let clearIntervalId = null;
+    let remainingSeconds = 0;
+
+    function showStatus(msg, type = "ok") {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className = "status " + type;
+    }
+
+    function updateMeta(textareaId, metaId) {
+      const text = document.getElementById(textareaId).value;
+      const bytes = enc.encode(text).length;
+      const kb = (bytes / 1024).toFixed(bytes > 0 && bytes < 102 ? 2 : 1);
+      document.getElementById(metaId).textContent = `${text.length.toLocaleString()} chars · ${kb} KB`;
+    }
+
+    function setBusy(isBusy) {
+      document.getElementById("encryptBtn").disabled = isBusy;
+      document.getElementById("decryptBtn").disabled = isBusy;
+    }
+
+    function checkCryptoSupport() {
+      if (!window.crypto || !window.crypto.subtle) {
+        showStatus("Web Crypto API requires HTTPS (e.g., GitHub Pages / Cloudflare Pages) or localhost.", "err");
+        return false;
+      }
+      return true;
+    }
+
+    function togglePw() {
+      const pw = document.getElementById("password");
+      const btn = document.querySelector(".toggle-btn");
+      if (pw.type === "password") {
+        pw.type = "text";
+        btn.textContent = "Hide";
+      } else {
+        pw.type = "password";
+        btn.textContent = "Show";
+      }
+    }
+
+    function updatePasswordStrength() {
+      const pw = document.getElementById("password").value;
+      const fill = document.getElementById("strengthFill");
+      const label = document.getElementById("strengthLabel");
+
+      if (!pw) {
+        fill.style.width = "0%";
+        label.textContent = "Enter password";
+        label.style.color = "var(--muted)";
+        return;
+      }
+
+      let pool = 0;
+      if (/[a-z]/.test(pw)) pool += 26;
+      if (/[A-Z]/.test(pw)) pool += 26;
+      if (/[0-9]/.test(pw)) pool += 10;
+      if (/[^a-zA-Z0-9]/.test(pw)) pool += 32;
+
+      const entropy = pw.length * Math.log2(pool || 1);
+
+      if (entropy < 45 || pw.length < 8) {
+        fill.style.width = "25%";
+        fill.style.backgroundColor = "#ef4444";
+        label.textContent = "Weak";
+        label.style.color = "#fca5a5";
+      } else if (entropy < 70 || pw.length < 12) {
+        fill.style.width = "55%";
+        fill.style.backgroundColor = "#f59e0b";
+        label.textContent = "Moderate";
+        label.style.color = "#fcd34d";
+      } else if (entropy < 95) {
+        fill.style.width = "80%";
+        fill.style.backgroundColor = "#3b82f6";
+        label.textContent = "Strong";
+        label.style.color = "#93c5fd";
+      } else {
+        fill.style.width = "100%";
+        fill.style.backgroundColor = "#10b981";
+        label.textContent = "Very Strong";
+        label.style.color = "#6ee7b7";
+      }
+    }
+
+    // Chunked Base64 encoding to handle multi-MB files cleanly on mobile
+    function bytesToBase64(bytes) {
+      const CHUNK_SIZE = 0x4000; // 16 KB chunks
+      const chunks = [];
+      for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+        chunks.push(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK_SIZE)));
+      }
+      return btoa(chunks.join(""));
+    }
+
+    function base64ToBytes(base64) {
+      const cleaned = base64.replace(/\s+/g, "");
+      const binary = atob(cleaned);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    async function deriveKey(password, salt) {
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      return crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: PBKDF2_ITERATIONS,
+          hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+
+    function startAutoClearTimer() {
+      stopAutoClearTimer();
+      remainingSeconds = AUTO_CLEAR_SECONDS;
+      const badge = document.getElementById("timerBadge");
+      badge.style.display = "inline-block";
+      renderTimer();
+
+      clearIntervalId = setInterval(() => {
+        remainingSeconds--;
+        if (remainingSeconds <= 0) {
+          clearAll("Auto-cleared all fields after 2 minutes for your security.");
+        } else {
+          renderTimer();
+        }
+      }, 1000);
+    }
+
+    function stopAutoClearTimer() {
+      if (clearIntervalId) {
+        clearInterval(clearIntervalId);
+        clearIntervalId = null;
+      }
+      document.getElementById("timerBadge").style.display = "none";
+    }
+
+    function renderTimer() {
+      const mins = String(Math.floor(remainingSeconds / 60)).padStart(2, "0");
+      const secs = String(remainingSeconds % 60).padStart(2, "0");
+      document.getElementById("timerBadge").textContent = `Auto-clear: ${mins}:${secs}`;
+    }
+
+    async function handleEncrypt() {
+      if (!checkCryptoSupport()) return;
+      const password = document.getElementById("password").value;
+      const plaintext = document.getElementById("inputText").value;
+
+      if (!password) return showStatus("Enter a master password first.", "err");
+      if (!plaintext) return showStatus("Enter or load text to encrypt.", "err");
+
+      setBusy(true);
+      showStatus("Deriving 256-bit key and encrypting...", "info");
+      await new Promise((r) => setTimeout(r, 20));
+
+      try {
+        const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+        const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+        const key = await deriveKey(password, salt);
+
+        const cipherBuffer = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          enc.encode(plaintext)
+        );
+
+        const cipherBytes = new Uint8Array(cipherBuffer);
+        const combined = new Uint8Array(SALT_LENGTH + IV_LENGTH + cipherBytes.length);
+        combined.set(salt, 0);
+        combined.set(iv, SALT_LENGTH);
+        combined.set(cipherBytes, SALT_LENGTH + IV_LENGTH);
+
+        document.getElementById("outputText").value = PREFIX + bytesToBase64(combined);
+        updateMeta("outputText", "outputMeta");
+        stopAutoClearTimer();
+        showStatus("Encrypted successfully. Download the .txt file and save it to Google Drive.", "ok");
+      } catch (err) {
+        showStatus("Encryption failed: " + err.message, "err");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function handleDecrypt() {
+      if (!checkCryptoSupport()) return;
+      const password = document.getElementById("password").value;
+      const rawInput = document.getElementById("inputText").value.trim();
+
+      if (!password) return showStatus("Enter your master password.", "err");
+      if (!rawInput) return showStatus("Paste or load encrypted text to decrypt.", "err");
+
+      setBusy(true);
+      showStatus("Deriving key and verifying integrity...", "info");
+      await new Promise((r) => setTimeout(r, 20));
+
+      try {
+        const payload = rawInput.startsWith(PREFIX) ? rawInput.slice(PREFIX.length) : rawInput;
+        const combined = base64ToBytes(payload);
+
+        if (combined.length <= SALT_LENGTH + IV_LENGTH) {
+          throw new Error("Invalid encrypted payload.");
+        }
+
+        const salt = combined.slice(0, SALT_LENGTH);
+        const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+        const cipherBytes = combined.slice(SALT_LENGTH + IV_LENGTH);
+
+        const key = await deriveKey(password, salt);
+        const plainBuffer = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: iv },
+          key,
+          cipherBytes
+        );
+
+        document.getElementById("outputText").value = dec.decode(plainBuffer);
+        updateMeta("outputText", "outputMeta");
+        startAutoClearTimer();
+        showStatus("Decrypted and verified. Fields will auto-clear in 2 minutes.", "ok");
+      } catch (err) {
+        document.getElementById("outputText").value = "";
+        updateMeta("outputText", "outputMeta");
+        stopAutoClearTimer();
+        showStatus("Decryption failed. Wrong password or corrupted/tampered data.", "err");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function loadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById("inputText").value = e.target.result;
+        updateMeta("inputText", "inputMeta");
+        showStatus(`Loaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB).`, "info");
+      };
+      reader.onerror = () => showStatus("Failed to read file.", "err");
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    async function copyOutput() {
+      const outputEl = document.getElementById("outputText");
+      if (!outputEl.value) return showStatus("Nothing to copy.", "err");
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+      } catch {
+        outputEl.select();
+        document.execCommand("copy");
+      }
+      showStatus("Output copied to clipboard.", "ok");
+    }
+
+    function downloadOutput() {
+      const output = document.getElementById("outputText").value;
+      if (!output) return showStatus("Nothing to download.", "err");
+      const isEncrypted = output.startsWith(PREFIX);
+      const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = isEncrypted ? "vault_encrypted.txt" : "vault_decrypted.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+      showStatus(`Downloaded ${a.download}.`, "ok");
+    }
+
+    function clearAll(customMsg = "Cleared all fields and password from memory.") {
+      stopAutoClearTimer();
+      document.getElementById("password").value = "";
+      document.getElementById("inputText").value = "";
+      document.getElementById("outputText").value = "";
+      updatePasswordStrength();
+      updateMeta("inputText", "inputMeta");
+      updateMeta("outputText", "outputMeta");
+      showStatus(customMsg, "info");
+    }
+  </script>
+</body>
+</html>
